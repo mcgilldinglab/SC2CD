@@ -35,7 +35,7 @@ robjects.r('''
 
 Step 2: Download and save the Python package 'GraphST_new', and the R package 'R' in the same folder on your computer
 
-Step 3: Add the data (available in {\color{red} Need a link}) and 'SC2CD_Tutorial.ipynb' to the folder in Step 2.
+Step 3: Add the data (available in **Need a link**) and 'SC2CD_Tutorial.ipynb' to the folder in Step 2.
 
 The tutorial is working now!
 
