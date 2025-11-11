@@ -8,7 +8,7 @@ Single-cell spatial transcriptomics enables the study of cellular organization. 
 
 ## Implementation
 
-Step 1: Create a conda environment with rpy2 installed
+Step 1: Create a conda environment with rpy2 and jupyter notebookinstalled
 ```
 conda create -n scanpy_env
 conda activate scanpy_env
@@ -24,6 +24,10 @@ conda install -c conda-forge rpy2
 which R
 export R_HOME=/path/to/R
 export LD_LIBRARY_PATH=$R_HOME/lib:$LD_LIBRARY_PATH
+
+conda install -c conda-forge notebook
+conda install -c conda-forge ipykernel
+jupyter notebook
 ```
 
 Step 2: Download and save the Python package 'GraphST_new', and the R package 'R' in the same folder on your computer
