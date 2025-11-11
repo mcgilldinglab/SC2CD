@@ -8,6 +8,34 @@ Single-cell spatial transcriptomics enables the study of cellular organization. 
 
 ## Implementation
 
+Step 1: Create a conda environment with rpy2 installed
 ```
-Start
+conda create -n scanpy_env
+conda activate scanpy_env
+conda install numpy=1.19
+conda install seaborn scikit-learn statsmodels numba pytables
+conda install -c conda-forge python-igraph leidenalg
+pip install scanpy==1.8.1
+
+conda create -n scanpy_env python=3.8
+conda activate scanpy_env
+conda install -c conda-forge r-base
+conda install -c conda-forge rpy2
+which R
+export R_HOME=/path/to/R
+export LD_LIBRARY_PATH=$R_HOME/lib:$LD_LIBRARY_PATH
+
+Open your Python, check whether rpy2 works
+
+import rpy2.robjects as robjects
+robjects.r('''
+   print("Hello from R")
+''')
 ```
+
+Step 2: Download and save the Python package 'GraphST_new', and the R package 'R' in the same folder on your computer
+
+Step 3: Add the data (available in {\color{red} Need a link}) and 'SC2CD_Tutorial.ipynb' to the folder in Step 2.
+
+The tutorial is working now!
+
