@@ -12,7 +12,7 @@ from scipy.sparse.csr import csr_matrix
 import pandas as pd
 from .utils import calculate_p,test_l,find_l,search_l
     
-class GraphST():
+class SC2CD():
     def __init__(self, 
         adata,
         adata_sc = None,
