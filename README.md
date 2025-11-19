@@ -30,7 +30,7 @@ conda install -c conda-forge ipykernel
 jupyter notebook
 ```
 
-Step 2: Download and save the Python package 'GraphST_new', and the R package 'R' in the same folder on your computer
+Step 2: Download and save the Python package 'SC2CD_py', and the R package 'R' in the same folder on your computer
 
 Step 3: Add the data ([https://doi.org/10.5281/zenodo.17601120](https://zenodo.org/records/17601120)) and 'SC2CD_Tutorial.ipynb' to the folder in Step 2.
 
