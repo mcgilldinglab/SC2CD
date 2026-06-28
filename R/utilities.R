@@ -364,4 +364,51 @@ object <- new(
 return(object)
 }
 
+createCARDfreeObject_imp <- function(markerList,spatial_count,spatial_location_ex,minCountGene = 100,minCountSpot =5){  
+  
+  spatial_location<-spatial_location_ex%>%select(x,y)
+  
+  if(is(spatial_count,"matrix")){
+    spatial_countMat  <- as(as.matrix(spatial_count), "sparseMatrix")
+  }else if(is(spatial_count,"vector")){
+    spatial_countMat  <- as(t(as.matrix(spatial_count)), "sparseMatrix")
+  }else if(is(spatial_count,"sparseMatrix")){
+    spatial_countMat <- spatial_count
+  }else{
+    stop("spatial resolved transcriptomic counts has to be of following forms: vector,matrix or sparseMatrix")
+  }# end fi
+  if (any(rownames(x = spatial_countMat) == '')) {
+    stop("Gene names of spatial count matrix cannot be empty", call. = FALSE)
+  }# end fi
+  if(is.null(spatial_location)){
+    stop("Please provide the matched spatial location data frame")
+  }# end fi
+  if(ncol(spatial_countMat)!=nrow(spatial_location)){
+    stop("The number of spatial locations in spatial_count and spatial_location should be consistent! (spatial_count -- p x n; spatial_location -- n x 2)")
+  }# end fi
+  ## check data order should consistent
+  if(!identical(colnames(spatial_countMat), rownames(spatial_location))){
+    stop("The column names of spatial_count and row names of spatial_location should be should be matched each other! (spatial_count -- p x n; spatial_location -- n x 2)")
+  }# end fi
+  #### QC on spatial dataset
+  spatial_countMat = spatial_countMat[rowSums(spatial_countMat > 0) > minCountSpot,]
+  spatial_countMat = spatial_countMat[,(colSums(spatial_countMat) >= minCountGene & colSums(spatial_countMat) <= 1e6)]
+  spatial_location = spatial_location[rownames(spatial_location) %in% colnames(spatial_countMat),]
+  spatial_location = spatial_location[match(colnames(spatial_countMat),rownames(spatial_location)),]
+  #### check marker gene list
+  if (missing(x = markerList)) {
+    stop("Please provide the marker list for CARDfree")
+  } 		
+  
+  object <- new(
+    Class = "CARDfree",
+    spatial_countMat = spatial_countMat,
+    spatial_location = spatial_location_ex[rownames(spatial_location),],
+    project = "Deconvolution (reference-free)",
+    markerList = markerList,
+    info_parameters = list()
+  )
+  return(object)
+}
+
 
