@@ -128,3 +128,129 @@ colnames(CARDfree_object@estimated_refMatrix) = colnames(B)
 return(CARDfree_object)
 }
 
+CARD_refFree_imp = function(CARDfree_object,sigma1,sigma2,lambda){
+  ### load in spatial transcriptomics data stored in CARDfree_object
+  spatial_countMat = CARDfree_object@spatial_countMat
+  spatial_location = CARDfree_object@spatial_location
+  ### load in markerList
+  ## number of cell type clusters
+  markerList = CARDfree_object@markerList
+  numK = length(markerList)
+  marker = unique(unlist(markerList))
+  #marker = toupper(marker)
+  
+  cat(paste0("## Number of unique marker genes: ",length(marker)," for ",numK," cell types ...\n"))
+  commonGene = intersect(toupper(rownames(spatial_countMat)),toupper(marker))
+  #### remove mitochondrial and ribosomal genes
+  commonGene  = commonGene[!(commonGene %in% commonGene[grep("mt-",commonGene)])]
+  if(length(commonGene) < numK * 10){
+    stop(paste0("## STOP! The average number of unique marker genes for each cell type is less than 20 ...\n"))
+  }
+  Xinput = spatial_countMat[order(rownames(spatial_countMat)),]
+  Xinput = Xinput[order(rownames(Xinput)),]
+  Xinput = Xinput[toupper(rownames(Xinput)) %in% commonGene,]
+  Xinput = Xinput[rowSums(Xinput) > 0,]
+  Xinput = Xinput[,colSums(Xinput) > 0]
+  Xinput_norm = sweep(Xinput,2,colSums(Xinput),"/")
+  
+  #### initialization
+  if(ncol(Xinput_norm) < 5000){
+    suppressMessages(require(NMF))
+    sink("NUL")
+    set.seed(20200107)
+    NMFout <- invisible(nmf(as.matrix(Xinput_norm),numK))
+    sink()
+    B = NMFout@fit@W
+    Vint1 = as.matrix(t(NMFout@fit@H))
+    rownames(Vint1) = colnames(Xinput_norm)
+  }else{
+    suppressMessages(require(RcppML))
+    sink("NUL")
+    set.seed(20200107)
+    NMFout <- invisible(RcppML::nmf(as.matrix(Xinput_norm),numK))
+    sink()
+    B = NMFout$w
+    rownames(B) = rownames(Xinput_norm)
+    Vint1 = as.matrix(t(NMFout$h))
+    rownames(Vint1) = colnames(Xinput_norm)
+  }
+  #### spatial location
+  spatial_location_ex=CARDfree_object@spatial_location
+  spatial_location = spatial_location_ex%>%select(x,y)
+  spatial_location = spatial_location[rownames(spatial_location) %in% colnames(Xinput_norm),]
+  spatial_location = spatial_location[match(colnames(Xinput_norm),rownames(spatial_location)),]
+  spatial_location_ex=spatial_location_ex[rownames(spatial_location),]
+  
+  ##### normalize the coordinates without changing the shape and relative position
+  norm_cords = spatial_location_ex[ ,c("x","y")]
+  norm_cords$x = norm_cords$x - min(norm_cords$x)
+  norm_cords$y = norm_cords$y - min(norm_cords$y)
+  scaleFactor = max(norm_cords$x,norm_cords$y)
+  norm_cords$x = norm_cords$x / scaleFactor
+  norm_cords$y = norm_cords$y / scaleFactor
+  
+  
+  norm_cords1 = spatial_location_ex[ ,c("mean_x","mean_y")]
+  norm_cords1$mean_x = norm_cords1$mean_x - min(norm_cords1$mean_x)
+  norm_cords1$mean_y = norm_cords1$mean_y - min(norm_cords1$mean_y)
+  scaleFactor1 = max(norm_cords1$mean_x,norm_cords1$mean_y)
+  norm_cords1$mean_x = norm_cords1$mean_x / scaleFactor1
+  norm_cords1$mean_y = norm_cords1$mean_y / scaleFactor1
+  
+  
+  ##### initialize the proportion matrix
+  ED1 <- rdist(as.matrix(norm_cords)) ##Euclidean distance matrix
+  ED2 <- rdist(as.matrix(norm_cords1))
+  b = rep(0,ncol(B))
+  ###### parameters that need to be set
+  isigma = 0.1 ####construct Gaussian kernel with the default scale /length parameter to be 0.1
+  epsilon = 1e-04  #### convergence epsion 
+  phi = c(0.01,0.1,0.3,0.5,0.7,0.9,0.99) #### grided values for phi
+  kernel_mat <- as.matrix(exp(-ED1^2 / (2 * sigma1^2)))+
+    lambda*as.matrix(exp(-ED2^2 / (2 * sigma2^2)))
+  diag(kernel_mat) <- 0
+  rm(ED1)
+  rm(ED2)
+  rm(Xinput)
+  rm(norm_cords)
+  gc()
+  ###### scale the Xinput_norm and B to speed up the convergence. 
+  mean_X = mean(Xinput_norm)
+  mean_B = mean(B)
+  Xinput_norm = Xinput_norm * 1e-01 / mean_X
+  B = B * 1e-01 / mean_B
+  gc()
+  ResList = list()
+  Obj = c()
+  for(iphi in 1:length(phi)){
+    res = CARDfree(
+      XinputIn = as.matrix(Xinput_norm),
+      UIn = as.matrix(B),
+      WIn = kernel_mat, 
+      phiIn = phi[iphi],
+      max_iterIn =1000,
+      epsilonIn = epsilon,
+      initV = Vint1,
+      initb = rep(0,ncol(B)),
+      initSigma_e2 = 0.1, 
+      initLambda = rep(10,ncol(B)))
+    rownames(res$V) = colnames(Xinput_norm)
+    colnames(res$V) = paste0("CT",1:ncol(B))
+    ResList[[iphi]] = res
+    Obj = c(Obj,res$Obj)
+  }
+  Optimal = which(Obj == max(Obj))
+  Optimal = Optimal[length(Optimal)] #### just in case if there are two equal objective function values
+  OptimalPhi = phi[Optimal]
+  OptimalRes = ResList[[Optimal]]
+  cat(paste0("## Deconvolution Finish! ...\n"))
+  CARDfree_object@info_parameters$phi = OptimalPhi
+  CARDfree_object@Proportion_CARD = sweep(OptimalRes$V,1,rowSums(OptimalRes$V),"/")
+  CARDfree_object@algorithm_matrix = list(B = OptimalRes$B * mean_B / 1e-01, Xinput_norm = Xinput_norm * mean_X / 1e-01, Res = OptimalRes)
+  CARDfree_object@spatial_location = spatial_location
+  CARDfree_object@estimated_refMatrix = OptimalRes$B * mean_B / 1e-01
+  rownames(CARDfree_object@estimated_refMatrix) = rownames(B)
+  colnames(CARDfree_object@estimated_refMatrix) = colnames(B)
+  return(CARDfree_object)
+}
+
