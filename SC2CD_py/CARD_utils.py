@@ -25,6 +25,7 @@ def R_load(local,py):
             library(SingleCellExperiment)
             library(ape)
             library(reticulate)
+            library(NMF)
     
             use_python(path_py)
             np<-import("numpy")
@@ -81,7 +82,7 @@ def Gen_Imput(path_data,adata_var_index):
             
             sc_meta<-data.frame(cellID=colnames(sc_count),cellType=obs_sc$cell_type,sampleInfo='sample1')
             rownames(sc_meta)<-colnames(sc_count)
-            
+             
             setwd(path_local)
             ''')
 
@@ -139,6 +140,7 @@ def Set_Obj(cluster_pred):
                                                       ct.select = unique(sc_meta$cellType),
                                                       sample.varname = "sampleInfo",
                                                       minCountGene = 100, minCountSpot = 5) 
+
         ''')
 
 
@@ -154,8 +156,49 @@ def Get_Dec(lam_c=0,sigma1=0.1,sigma2=0.1):
     cell_dec_py.index=r('''rownames(CARD_obj_new@Proportion_CARD)''')
     cell_dec_py.columns=r('''colnames(CARD_obj_new@Proportion_CARD)''')
     return cell_dec_py
+    
+
+def Set_Obj_CARDfree(path_data, cluster_pred):
+    ro.globalenv['domain']=cluster_pred
+    ro.globalenv['path']=path_data
+    r_run=r('''
+        setwd(path)
+        markerList <- readRDS("markerList_example.rds")
+        qc <- clean_markerList_for_CARDfree(
+                      markerList = markerList,
+                      spatial_count = sp_count,
+                      min_markers_per_type = 5
+                    )
+        markerList <- qc$markerList        
+        setwd(path_local)
+            
+        obs$pred<-as.factor(domain)
+        sum_info<-obs%>%group_by(pred)%>%summarise(mean_x=mean(array_row),mean_y=mean(array_col),
+                                        sd_x=sd(array_row),sd_y=sd(array_col))
+        sp_loc_mean<-left_join(obs,sum_info,by='pred')%>%select(mean_x,mean_y)
+        rownames(sp_loc_mean)<-rownames(sp_loc_ini)
+        sp_loc<-cbind(sp_loc_ini,sp_loc_mean)
+        CARDfree_obj<- createCARDfreeObject_imp(markerList = markerList,
+                                                    spatial_count = sp_count,
+                                                    spatial_location = sp_loc,
+                                                    minCountGene = 100,
+                                                    minCountSpot = 5) 
+                                                    
+        ''')
 
 
+
+def Get_Dec_CARDfree(lam_c=0,sigma1=0.1,sigma2=0.1):
+    ro.globalenv['lam_CARD']=lam_c
+    ro.globalenv['sigma1']=sigma1
+    ro.globalenv['sigma2']=sigma2
+    r_run=r('''CARDfree_obj_new<-CARD_refFree_imp(
+        CARDfree_object = CARDfree_obj,
+        sigma1=sigma1,sigma2=sigma2,lambda=lam_CARD)''')
+    cell_dec_py=pd.DataFrame(r('''CARDfree_obj_new@Proportion_CARD'''))
+    cell_dec_py.index=r('''rownames(CARDfree_obj_new@Proportion_CARD)''')
+    cell_dec_py.columns=r('''colnames(CARDfree_obj_new@Proportion_CARD)''')
+    return cell_dec_py
 
 
 
