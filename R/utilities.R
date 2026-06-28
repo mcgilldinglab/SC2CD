@@ -411,4 +411,29 @@ createCARDfreeObject_imp <- function(markerList,spatial_count,spatial_location_e
   return(object)
 }
 
-
+clean_markerList_for_CARDfree <- function(
+    markerList,
+    spatial_count,
+    min_markers_per_type = 5
+) {
+  spatial_genes <- rownames(spatial_count)
+  
+  gene_map <- setNames(spatial_genes, toupper(spatial_genes))
+  gene_map <- gene_map[!duplicated(names(gene_map))]
+  
+  markerList2 <- lapply(markerList, function(g) {
+    matched <- gene_map[toupper(g)]
+    unique(unname(matched[!is.na(matched)]))
+  })
+  
+  markerList2 <- markerList2[lengths(markerList2) >= min_markers_per_type]
+  
+  marker_qc <- data.frame(
+    cell_type = names(markerList2),
+    n_marker_detected = lengths(markerList2),
+    markers = sapply(markerList2, paste, collapse = ";"),
+    row.names = NULL
+  )
+  
+  list(markerList = markerList2, marker_qc = marker_qc)
+}
