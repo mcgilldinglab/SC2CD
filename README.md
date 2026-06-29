@@ -8,29 +8,19 @@ Single-cell spatial transcriptomics enables the study of cellular organization. 
 
 ## Implementation
 
-Step 1: Create a conda environment with rpy2 and jupyter notebookinstalled
+Step 1: Create a conda environment with necessary packages installed:
+
+Download setup_sc2cd_env.sh and run the following in your terminal:
+
 ```
-conda create -n scanpy_env
-conda activate scanpy_env
-conda install numpy=1.19
-conda install seaborn scikit-learn statsmodels numba pytables
-conda install -c conda-forge python-igraph leidenalg
-pip install scanpy==1.8.1
+# Default installation
+bash setup_sc2cd_env.sh
 
-conda create -n scanpy_env python=3.8
-conda activate scanpy_env
-conda install -c conda-forge r-base
-conda install -c conda-forge rpy2
-which R
-export R_HOME=/path/to/R
-export LD_LIBRARY_PATH=$R_HOME/lib:$LD_LIBRARY_PATH
-
-conda install -c conda-forge notebook
-conda install -c conda-forge ipykernel
-jupyter notebook
+# Optional: Create an environment with a custom name
+bash setup_sc2cd_env.sh <your_env_name>
 ```
 
-Step 2: Download and save the Python package 'SC2CD_py', and the R package 'R' in the same folder on your computer
+Step 2: Download and save the Python package 'SC2CD_py', and the R package 'R' in a folder on your computer
 
 Step 3: Add the data ([https://doi.org/10.5281/zenodo.17601120](https://zenodo.org/records/17601120)) and 'SC2CD_Tutorial.ipynb' to the folder in Step 2.
 
